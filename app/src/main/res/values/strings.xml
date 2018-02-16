@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Popular Movies</string>
+    <string name="title_popular_movies">Popular Movies</string>
+    <string name="title_top_rated_movies">Top Rated Movies</string>
+    <string name="label_movie_poster">Movie poster</string>
+    <string name="label_movie_average_vote">Average vote</string>
+
+    <string name="average_vote">%1$s/10</string>
+    <string name="placeholder_vote_average">4.5/10</string>
+    <string name="placeholder_title">007 - Casino Royal</string>
+    <string name="placeholder_date">4.01.2018</string>
+</resources>
