@@ -9,4 +9,6 @@
     <string name="placeholder_vote_average">4.5/10</string>
     <string name="placeholder_title">007 - Casino Royal</string>
     <string name="placeholder_date">4.01.2018</string>
+    <string name="error_no_internet">You\'re phone has no internet access :(</string>
+    <string name="retry">Retry</string>
 </resources>

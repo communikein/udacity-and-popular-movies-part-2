@@ -1,5 +1,8 @@
 package it.communikein.popularmovies.network;
 
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 
 import java.io.IOException;
@@ -9,7 +12,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Scanner;
 
-class NetworkUtils {
+public class NetworkUtils {
 
     private static final String API_BASE_URL = "https://api.themoviedb.org/3/movie";
     private static final String API_KEY_PARAM = "?api_key=";
@@ -65,5 +68,18 @@ class NetworkUtils {
         data.putInt(KEY_SERVER_RESPONSE, responseCode);
 
         return data;
+    }
+
+    public static boolean isDeviceOnline(Context context){
+        ConnectivityManager connMgr = (ConnectivityManager)
+                context.getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        if (connMgr != null) {
+            NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+
+            return (networkInfo != null && networkInfo.isConnected());
+        }
+        else
+            return false;
     }
 }
