@@ -1,7 +1,12 @@
 <resources>
     <string name="app_name">Popular Movies</string>
+    <string name="content_authority">it.communnikein.popularmovies</string>
+
     <string name="title_popular_movies">Popular Movies</string>
+    <string name="title_popular_movies_short">Popular</string>
     <string name="title_top_rated_movies">Top Rated Movies</string>
+    <string name="title_top_rated_movies_short">Top Rated</string>
+    <string name="title_favourites">Favourites</string>
     <string name="label_movie_poster">Movie poster</string>
     <string name="label_movie_average_vote">Average vote</string>
 

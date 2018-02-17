@@ -1,9 +1,13 @@
 package it.communikein.popularmovies;
 
 import android.content.Intent;
+import android.database.Cursor;
 import android.databinding.DataBindingUtil;
+import android.net.Uri;
 import android.support.design.widget.Snackbar;
+import android.support.design.widget.TabLayout;
 import android.support.v4.app.LoaderManager;
+import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
@@ -12,7 +16,13 @@ import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import it.communikein.popularmovies.database.MoviesContract;
+import it.communikein.popularmovies.model.Dataset;
 import it.communikein.popularmovies.databinding.ActivityMainBinding;
+import it.communikein.popularmovies.model.Movie;
 import it.communikein.popularmovies.network.MoviesLoader;
 import it.communikein.popularmovies.network.NetworkUtils;
 
@@ -23,18 +33,41 @@ public class MainActivity extends AppCompatActivity implements
 
     private static final String KEY_DATASET = "DATASET";
     private static final String KEY_FIRST_VISIBLE_ITEM_POS = "FIRST_VISIBLE_ITEM_POS";
-    private static final String KEY_POPULAR = "POPULAR";
+    private static final String KEY_SELECTED_TAB = "SELECTED_TAB";
 
     private static final int LOADER_POPULAR_MOVIES_ID = 1001;
     private static final int LOADER_TOP_RATED_MOVIES_ID = 1002;
+    private static final int LOADER_FAVOURITE_MOVIES_ID = 1003;
 
     private static final int LOADER_MORE_POPULAR_MOVIES_ID = 1011;
     private static final int LOADER_MORE_TOP_RATED_MOVIES_ID = 1012;
+    private static final int LOADER_MORE_FAVOURITE_MOVIES_ID = 1013;
+
+    public static final String[] MAIN_MOVIES_PROJECTION = {
+            MoviesContract.MovieEntry.COLUMN_ID,
+            MoviesContract.MovieEntry.COLUMN_VOTE_AVERAGE,
+            MoviesContract.MovieEntry.COLUMN_POSTER_PATH,
+            MoviesContract.MovieEntry.COLUMN_ORIGINAL_TITLE,
+            MoviesContract.MovieEntry.COLUMN_OVERVIEW,
+            MoviesContract.MovieEntry.COLUMN_RELEASE_DATE
+    };
+
+    public static final int INDEX_MOVIE_ID = 0;
+    public static final int INDEX_MOVIE_VOTE_AVERAGE = 1;
+    public static final int INDEX_MOVIE_POSTER_PATH = 2;
+    public static final int INDEX_MOVIE_ORIGINAL_TITLE = 3;
+    public static final int INDEX_MOVIE_OVERVIEW = 4;
+    public static final int INDEX_MOVIE_RELEASE_DATE = 5;
 
     private ActivityMainBinding mBinding;
 
-    private DatasetMovies datasetMovies;
-    private boolean popular = true;
+    private Dataset<Movie> moviesDataset;
+
+    private static final int TAB_POPULAR_MOVIES = 0;
+    private static final int TAB_TOP_RATED_MOVIES = 1;
+    private static final int TAB_FAVOURITE_MOVIES = 2;
+    private int selectedTab = TAB_POPULAR_MOVIES;
+
     private int lastItemPosition = -1;
     private int firstVisibleItemPosition = -1;
 
@@ -49,9 +82,9 @@ public class MainActivity extends AppCompatActivity implements
         mBinding.swipeRefresh.setOnRefreshListener(this);
         mBinding.swipeRefresh.setRefreshing(false);
 
+        initTabs();
         initGrid();
         initData(savedInstanceState);
-        initFab();
     }
 
     @Override
@@ -61,33 +94,32 @@ public class MainActivity extends AppCompatActivity implements
         hideProgressBar();
         if (savedInstanceState == null) return;
         if (!savedInstanceState.containsKey(KEY_DATASET)) return;
-        if (!savedInstanceState.containsKey(KEY_POPULAR)) return;
+        if (!savedInstanceState.containsKey(KEY_SELECTED_TAB)) return;
 
-        popular = savedInstanceState.getBoolean(KEY_POPULAR);
-        updateMovies();
+        selectedTab = savedInstanceState.getInt(KEY_SELECTED_TAB);
+        mBinding.tabs.getTabAt(selectedTab).select();
 
-        datasetMovies = savedInstanceState.getParcelable(KEY_DATASET);
+        moviesDataset = savedInstanceState.getParcelable(KEY_DATASET);
+        MoviesGridAdapter adapter = (MoviesGridAdapter) mBinding.listRecyclerview.getAdapter();
+        adapter.setList(moviesDataset.getResults());
+        adapter.notifyDataSetChanged();
+
 
         if (savedInstanceState.containsKey(KEY_FIRST_VISIBLE_ITEM_POS))
             firstVisibleItemPosition = savedInstanceState.getInt(KEY_FIRST_VISIBLE_ITEM_POS);
         else
             firstVisibleItemPosition = 0;
-
-        MoviesGridAdapter adapter = (MoviesGridAdapter) mBinding.listRecyclerview.getAdapter();
-        adapter.setList(datasetMovies.getResults());
-        adapter.notifyDataSetChanged();
-
-        mBinding.listRecyclerview.scrollToPosition(firstVisibleItemPosition);
+        mBinding.listRecyclerview.smoothScrollToPosition(firstVisibleItemPosition);
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
 
-        if (datasetMovies != null)
-            outState.putParcelable(KEY_DATASET, datasetMovies);
+        if (moviesDataset != null)
+            outState.putParcelable(KEY_DATASET, moviesDataset);
         outState.putInt(KEY_FIRST_VISIBLE_ITEM_POS, firstVisibleItemPosition);
-        outState.putBoolean(KEY_POPULAR, popular);
+        outState.putInt(KEY_SELECTED_TAB, selectedTab);
     }
 
     private void showProgressBar() {
@@ -96,6 +128,47 @@ public class MainActivity extends AppCompatActivity implements
 
     private void hideProgressBar() {
         mBinding.swipeRefresh.setRefreshing(false);
+    }
+
+    private void initTabs() {
+        /* Set up the tab layout */
+        mBinding.tabs.setVisibility(View.VISIBLE);
+        mBinding.tabs.setTabGravity(TabLayout.GRAVITY_FILL);
+        mBinding.tabs.setTabMode(TabLayout.MODE_FIXED);
+
+        mBinding.tabs.addTab(mBinding.tabs.newTab().setText(R.string.title_popular_movies_short));
+        mBinding.tabs.addTab(mBinding.tabs.newTab().setText(R.string.title_top_rated_movies_short));
+        mBinding.tabs.addTab(mBinding.tabs.newTab().setText(R.string.title_favourites));
+
+        mBinding.tabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                selectedTab = tab.getPosition();
+                switch (tab.getPosition()){
+                    case 0:
+                        startLoader(LOADER_POPULAR_MOVIES_ID);
+                        break;
+                    case 1:
+                        startLoader(LOADER_TOP_RATED_MOVIES_ID);
+                        break;
+                    case 2:
+                        startLoader(LOADER_FAVOURITE_MOVIES_ID);
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {
+
+            }
+
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {
+
+            }
+        });
     }
 
     private void initGrid() {
@@ -130,8 +203,8 @@ public class MainActivity extends AppCompatActivity implements
 
                 shouldUpdate = lastItemPosition == totalItems - 1;
 
-                if (!listScrolling && shouldUpdate)
-                    updateMovies();
+                if (!listScrolling && shouldUpdate && selectedTab != TAB_FAVOURITE_MOVIES)
+                    loadMoreMovies();
             }
 
             @Override
@@ -150,51 +223,16 @@ public class MainActivity extends AppCompatActivity implements
                         break;
                 }
 
-                if (!listScrolling && shouldUpdate)
-                    updateMovies();
+                if (!listScrolling && shouldUpdate && selectedTab != TAB_FAVOURITE_MOVIES)
+                    loadMoreMovies();
             }
         });
     }
 
-    synchronized private void updateMovies() {
-        loadMoreMovies();
-    }
-
-    private void loadMoreMovies() {
-        if (datasetMovies != null && datasetMovies.getPage() < datasetMovies.getTotalPages()) {
-            final int loader_id = popular ? LOADER_MORE_POPULAR_MOVIES_ID : LOADER_MORE_TOP_RATED_MOVIES_ID;
-
-            loadData(loader_id);
-        }
-    }
-
-    private void initData(Bundle savedInstanceState) {
-        if (savedInstanceState == null || !savedInstanceState.containsKey(KEY_DATASET))
-            onRefresh();
-    }
-
-    private void initFab() {
-        mBinding.fab.setBackgroundResource(R.drawable.ic_star_white);
-        mBinding.fab.setOnClickListener(v -> {
-            popular = !popular;
-            updateMovieSort();
-
-            onRefresh();
-        });
-    }
-
-
-    @Override
-    public void onRefresh() {
-        int loader_id = popular ? LOADER_POPULAR_MOVIES_ID : LOADER_TOP_RATED_MOVIES_ID;
-
-        loadData(loader_id);
-    }
-
-    private void loadData(int loader_id) {
+    private void startLoader(int loader_id) {
         mBinding.swipeRefresh.setRefreshing(true);
 
-        if (NetworkUtils.isDeviceOnline(this)) {
+        if (loader_id == LOADER_FAVOURITE_MOVIES_ID || NetworkUtils.isDeviceOnline(this)) {
             getSupportLoaderManager()
                     .restartLoader(loader_id, null, MainActivity.this)
                     .forceLoad();
@@ -210,20 +248,53 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-    private void updateMovieSort() {
-        if (popular) {
-            mBinding.toolbar.setTitle(R.string.title_popular_movies);
-            mBinding.fab.setImageResource(R.drawable.ic_star_white);
-        } else {
-            mBinding.toolbar.setTitle(R.string.title_top_rated_movies);
-            mBinding.fab.setImageResource(R.drawable.ic_whatshot_white);
+    synchronized private void loadMoreMovies() {
+        if (moviesDataset != null && moviesDataset.getPage() < moviesDataset.getTotalPages()) {
+            int loader_id = LOADER_POPULAR_MOVIES_ID;
+            switch (selectedTab) {
+                case TAB_POPULAR_MOVIES:
+                    loader_id = LOADER_MORE_POPULAR_MOVIES_ID;
+                    break;
+                case TAB_TOP_RATED_MOVIES:
+                    loader_id = LOADER_MORE_TOP_RATED_MOVIES_ID;
+                    break;
+                case TAB_FAVOURITE_MOVIES:
+                    loader_id = LOADER_MORE_FAVOURITE_MOVIES_ID;
+                    break;
+            }
+
+            startLoader(loader_id);
         }
     }
 
+    private void initData(Bundle savedInstanceState) {
+        if (savedInstanceState == null || !savedInstanceState.containsKey(KEY_DATASET))
+            onRefresh();
+    }
+
+
+    @Override
+    public void onRefresh() {
+        int loader_id = LOADER_POPULAR_MOVIES_ID;
+        switch (selectedTab) {
+            case TAB_POPULAR_MOVIES:
+                loader_id = LOADER_POPULAR_MOVIES_ID;
+                break;
+            case TAB_TOP_RATED_MOVIES:
+                loader_id = LOADER_TOP_RATED_MOVIES_ID;
+                break;
+            case TAB_FAVOURITE_MOVIES:
+                loader_id = LOADER_FAVOURITE_MOVIES_ID;
+                break;
+        }
+
+        startLoader(loader_id);
+    }
+
     private void handleMovies() {
-        if (datasetMovies != null) {
+        if (moviesDataset != null) {
             MoviesGridAdapter adapter = (MoviesGridAdapter) mBinding.listRecyclerview.getAdapter();
-            adapter.setList(datasetMovies.getResults());
+            adapter.setList(moviesDataset.getResults());
             adapter.notifyDataSetChanged();
         }
     }
@@ -241,7 +312,7 @@ public class MainActivity extends AppCompatActivity implements
         switch (id) {
             case LOADER_MORE_POPULAR_MOVIES_ID:
                 showProgressBar();
-                int nextPage = datasetMovies.getPage() + 1;
+                int nextPage = moviesDataset.getPage() + 1;
                 return MoviesLoader.createPopularMoviesLoader(this, nextPage);
 
             case LOADER_POPULAR_MOVIES_ID:
@@ -250,12 +321,24 @@ public class MainActivity extends AppCompatActivity implements
 
             case LOADER_MORE_TOP_RATED_MOVIES_ID:
                 showProgressBar();
-                nextPage = datasetMovies.getPage() + 1;
+                nextPage = moviesDataset.getPage() + 1;
                 return MoviesLoader.createTopRatedMoviesLoader(this, nextPage);
 
             case LOADER_TOP_RATED_MOVIES_ID:
                 showProgressBar();
                 return MoviesLoader.createTopRatedMoviesLoader(this, 1);
+
+            case LOADER_FAVOURITE_MOVIES_ID:
+            case LOADER_MORE_FAVOURITE_MOVIES_ID:
+                showProgressBar();
+
+                Uri forecastQueryUri = MoviesContract.MovieEntry.CONTENT_URI;
+                return new CursorLoader(this,
+                        forecastQueryUri,
+                        MAIN_MOVIES_PROJECTION,
+                        null,
+                        null,
+                        null);
 
             default:
                 throw new RuntimeException("Loader Not Implemented: " + id);
@@ -266,21 +349,46 @@ public class MainActivity extends AppCompatActivity implements
     public void onLoadFinished(Loader loader, Object data) {
         hideProgressBar();
 
-        DatasetMovies newDataset = (DatasetMovies) data;
         switch (loader.getId()) {
             case LOADER_POPULAR_MOVIES_ID:
             case LOADER_TOP_RATED_MOVIES_ID:
-                datasetMovies = newDataset;
+                moviesDataset = (Dataset<Movie>) data;
                 break;
 
             case LOADER_MORE_POPULAR_MOVIES_ID:
             case LOADER_MORE_TOP_RATED_MOVIES_ID:
-                datasetMovies.setPage(newDataset.getPage());
-                datasetMovies.getResults().addAll(((DatasetMovies) data).getResults());
+                moviesDataset.setPage(((Dataset<Movie>) data).getPage());
+                moviesDataset.getResults().addAll(((Dataset<Movie>) data).getResults());
+                break;
+
+            case LOADER_FAVOURITE_MOVIES_ID:
+            case LOADER_MORE_FAVOURITE_MOVIES_ID:
+                List<Movie> movies = parseCursor((Cursor) data);
+                moviesDataset = new Dataset<>(0, movies.size(), 1, movies);
                 break;
         }
 
         handleMovies();
+    }
+
+    private List<Movie> parseCursor(Cursor cursor) {
+        List<Movie> movies = new ArrayList<>();
+
+        if (cursor != null) for (int i=0; i<cursor.getCount(); i++) {
+            cursor.moveToPosition(i);
+
+            int id = cursor.getInt(INDEX_MOVIE_ID);
+            float voteAverage = cursor.getFloat(INDEX_MOVIE_VOTE_AVERAGE);
+            String posterPath = cursor.getString(INDEX_MOVIE_POSTER_PATH);
+            String originalTitle = cursor.getString(INDEX_MOVIE_ORIGINAL_TITLE);
+            String overview = cursor.getString(INDEX_MOVIE_OVERVIEW);
+            long releaseDate = cursor.getLong(INDEX_MOVIE_RELEASE_DATE);
+
+            Movie movie = new Movie(id, voteAverage, posterPath, originalTitle, overview, releaseDate);
+            movies.add(movie);
+        }
+
+        return movies;
     }
 
     @Override

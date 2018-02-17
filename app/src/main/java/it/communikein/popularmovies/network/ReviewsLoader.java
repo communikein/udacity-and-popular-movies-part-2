@@ -13,43 +13,40 @@ import java.net.URL;
 
 import it.communikein.popularmovies.model.Dataset;
 import it.communikein.popularmovies.model.Movie;
+import it.communikein.popularmovies.model.Review;
 
-public class MoviesLoader extends AsyncTaskLoader<Dataset<Movie>> {
+public class ReviewsLoader extends AsyncTaskLoader<Dataset<Review>> {
 
     // Weak references will still allow the Context to be garbage-collected
     private final WeakReference<Activity> mActivity;
-    private final boolean mPopular;
+    private final Movie mMovie;
     private final int mPage;
 
-    private MoviesLoader(Activity activity, boolean popular, int page) {
+    private ReviewsLoader(Activity activity, Movie movie, int page) {
         super(activity);
 
         this.mActivity = new WeakReference<>(activity);
-        this.mPopular = popular;
+        this.mMovie = movie;
         this.mPage = page;
     }
 
-    public static MoviesLoader createPopularMoviesLoader(Activity activity, int page) {
-        return new MoviesLoader(activity, true, page);
-    }
-
-    public static MoviesLoader createTopRatedMoviesLoader(Activity activity, int page) {
-        return new MoviesLoader(activity, false, page);
+    public static ReviewsLoader createReviewsLoader(Activity activity, Movie movie, int page) {
+        return new ReviewsLoader(activity, movie, page);
     }
 
     @Override
-    public Dataset<Movie> loadInBackground() {
+    public Dataset<Review> loadInBackground() {
         Activity context = mActivity.get();
         if (context == null) return null;
 
         try {
-            URL url = NetworkUtils.getMoviesUrl(mPopular, mPage);
+            URL url = NetworkUtils.getMovieReviewsUrl(mMovie.getId(), mPage);
             if (url == null)
                 return null;
 
             Bundle response = NetworkUtils.getResponseFromHttpUrl(url);
             if (response.containsKey(NetworkUtils.KEY_DATA)) {
-                Type type = new TypeToken<Dataset<Movie>>(){}.getType();
+                Type type = new TypeToken<Dataset<Review>>(){}.getType();
                 return new Gson().fromJson(response.getString(NetworkUtils.KEY_DATA), type);
             }
             else
@@ -60,4 +57,3 @@ public class MoviesLoader extends AsyncTaskLoader<Dataset<Movie>> {
     }
 
 }
-

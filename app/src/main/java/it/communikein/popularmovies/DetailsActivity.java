@@ -10,6 +10,7 @@ import android.view.MenuItem;
 import com.squareup.picasso.Picasso;
 
 import it.communikein.popularmovies.databinding.ActivityDetailsBinding;
+import it.communikein.popularmovies.model.Movie;
 
 public class DetailsActivity extends AppCompatActivity {
 

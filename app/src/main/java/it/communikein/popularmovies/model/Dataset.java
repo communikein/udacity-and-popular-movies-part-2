@@ -1,4 +1,4 @@
-package it.communikein.popularmovies;
+package it.communikein.popularmovies.model;
 
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -8,22 +8,40 @@ import com.google.gson.annotations.SerializedName;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DatasetMovies implements Parcelable {
+public class Dataset<T extends ParcelableItem> implements Parcelable {
 
+    public static final String PAGE = "page";
+    public static final String TOTAL_RESULTS = "total_results";
+    public static final String TOTAL_PAGES = "total_pages";
+    public static final String RESULTS = "results";
+
+    @SerializedName(PAGE)
     private int page;
-    @SerializedName("total_results")
-    private int totalResults;
-    @SerializedName("total_pages")
-    private int totalPages;
-    private List<Movie> results;
 
-    private DatasetMovies(Parcel in) {
+    @SerializedName(TOTAL_RESULTS)
+    private int totalResults;
+
+    @SerializedName(TOTAL_PAGES)
+    private int totalPages;
+
+    @SerializedName(RESULTS)
+    private List<T> results;
+
+    Dataset(Parcel in) {
         setPage(in.readInt());
         setTotalResults(in.readInt());
         setTotalPages(in.readInt());
         setResults(new ArrayList<>());
-        in.readTypedList(results, Movie.CREATOR);
+        in.readTypedList(this.results, T.CREATOR);
     }
+
+    public Dataset(int page, int totalResults, int totalPages, List<T> results) {
+        setPage(page);
+        setTotalResults(totalResults);
+        setTotalPages(totalPages);
+        setResults(results);
+    }
+
 
     public int getPage() {
         return page;
@@ -49,11 +67,11 @@ public class DatasetMovies implements Parcelable {
         this.totalPages = totalPages;
     }
 
-    public List<Movie> getResults() {
+    public List<T> getResults() {
         return results;
     }
 
-    private void setResults(List<Movie> results) {
+    private void setResults(List<T> results) {
         this.results = results;
     }
 
@@ -71,14 +89,15 @@ public class DatasetMovies implements Parcelable {
         dest.writeTypedList(getResults());
     }
 
-    static final Parcelable.Creator<DatasetMovies> CREATOR = new Parcelable.Creator<DatasetMovies>() {
+    static final Parcelable.Creator<Dataset> CREATOR = new Parcelable.Creator<Dataset>() {
 
-        public DatasetMovies createFromParcel(Parcel in) {
-            return new DatasetMovies(in);
+        public Dataset createFromParcel(Parcel in) {
+            return new Dataset<>(in);
         }
 
-        public DatasetMovies[] newArray(int size) {
-            return new DatasetMovies[size];
+        public Dataset[] newArray(int size) {
+            return new Dataset[size];
         }
     };
+
 }

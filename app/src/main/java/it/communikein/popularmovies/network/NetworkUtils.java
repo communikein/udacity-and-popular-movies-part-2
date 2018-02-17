@@ -1,8 +1,10 @@
 package it.communikein.popularmovies.network;
 
 import android.content.Context;
+import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.Bundle;
 
 import java.io.IOException;
@@ -12,32 +14,79 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Scanner;
 
+import it.communikein.popularmovies.offline.ApiKeyUtils;
+
 public class NetworkUtils {
 
     private static final String API_BASE_URL = "https://api.themoviedb.org/3/movie";
-    private static final String API_KEY_PARAM = "?api_key=";
 
-    private static final String URL_POPULAR_MOVIE = API_BASE_URL + "/popular" + API_KEY_PARAM +
-            ApiKeyUtils.API_KEY;
-    private static final String URL_TOP_RATED_MOVIE = API_BASE_URL + "/top_rated" + API_KEY_PARAM +
-            ApiKeyUtils.API_KEY;
+    private static final String API_KEY_PARAM = "api_key";
+    private static final String API_PAGE_PARAM = "page";
+
+    private static final String API_VIDEOS_PATH = "video";
+    private static final String API_REVIEWS_PATH = "reviews";
+    private static final String API_POPULAR_PATH = "popular";
+    private static final String API_TOP_RATED_PATH = "top_rated";
+
+    private static final String YOUTUBE_BASE_URL = "https://www.youtube.com/watch";
+    private static final String YOUTUBE_VIDEO_PARAM = "v";
+
 
     private static final String KEY_SERVER_RESPONSE = "SERVER_RESPONSE";
     public static final String KEY_DATA = "DATA";
 
     public static URL getMoviesUrl(boolean popular, int page) {
-        try {
-            URL url;
-            if (popular)
-                url = new URL(URL_POPULAR_MOVIE + "&page=" + String.valueOf(page));
-            else
-                url = new URL(URL_TOP_RATED_MOVIE + "&page=" + String.valueOf(page));
+        Uri uri = Uri.parse(API_BASE_URL).buildUpon()
+                .appendPath(popular ? API_POPULAR_PATH : API_TOP_RATED_PATH)
+                .appendQueryParameter(API_KEY_PARAM, ApiKeyUtils.API_KEY)
+                .appendQueryParameter(API_PAGE_PARAM, String.valueOf(page))
+                .build();
 
-            return url;
+        try {
+            return new URL(uri.toString());
         } catch (MalformedURLException e) {
             e.printStackTrace();
             return null;
         }
+    }
+
+    public static URL getMovieVideosUrl(int movieId) {
+        Uri uri = Uri.parse(API_BASE_URL).buildUpon()
+                .appendPath(String.valueOf(movieId))
+                .appendPath(API_VIDEOS_PATH)
+                .appendQueryParameter(API_KEY_PARAM, ApiKeyUtils.API_KEY)
+                .build();
+
+        try {
+            return new URL(uri.toString());
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public static URL getMovieReviewsUrl(int movieId, int page) {
+        Uri uri = Uri.parse(API_BASE_URL).buildUpon()
+                .appendPath(String.valueOf(movieId))
+                .appendPath(API_REVIEWS_PATH)
+                .appendQueryParameter(API_KEY_PARAM, ApiKeyUtils.API_KEY)
+                .appendQueryParameter(API_PAGE_PARAM, String.valueOf(page))
+                .build();
+
+        try {
+            return new URL(uri.toString());
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public static Intent getYoutubeVideoIntent(String key) {
+        Uri uri = Uri.parse(YOUTUBE_BASE_URL).buildUpon()
+                .appendQueryParameter(YOUTUBE_VIDEO_PARAM, key)
+                .build();
+
+        return new Intent(Intent.ACTION_VIEW, uri);
     }
 
 

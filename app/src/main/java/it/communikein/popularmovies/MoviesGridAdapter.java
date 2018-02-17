@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import it.communikein.popularmovies.databinding.ListItemMovieGridBinding;
+import it.communikein.popularmovies.model.Movie;
 
 public class MoviesGridAdapter extends RecyclerView.Adapter<MoviesGridAdapter.MovieViewHolder> {
 
