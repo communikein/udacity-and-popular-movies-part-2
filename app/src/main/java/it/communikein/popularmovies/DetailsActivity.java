@@ -1,20 +1,28 @@
 package it.communikein.popularmovies;
 
+import android.content.ContentResolver;
 import android.content.Intent;
 import android.databinding.DataBindingUtil;
 import android.support.design.widget.AppBarLayout;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.MenuItem;
 
 import com.squareup.picasso.Picasso;
 
+import it.communikein.popularmovies.database.MoviesContract;
 import it.communikein.popularmovies.databinding.ActivityDetailsBinding;
 import it.communikein.popularmovies.model.Movie;
+import it.communikein.popularmovies.utilities.ContentValuesHelper;
 
 public class DetailsActivity extends AppCompatActivity {
 
     public static final String KEY_MOVIE = "MOVIE";
+
+    public interface FavouriteMovieUpdateListener {
+        void onFavouriteMovieUpdated(Movie movie);
+    }
 
     private ActivityDetailsBinding mBinding;
 
@@ -27,6 +35,7 @@ public class DetailsActivity extends AppCompatActivity {
 
         parseData();
         initToolbar();
+        initFab();
     }
 
     private void parseData() {
@@ -39,6 +48,10 @@ public class DetailsActivity extends AppCompatActivity {
         mBinding.voteAverageTextview.setText(
                 getString(R.string.average_vote, mMovie.printVoteAverage()));
         mBinding.releaseDateTextview.setText(mMovie.printReleaseDate());
+
+        Picasso.with(this)
+                .load(mMovie.getPosterFullPath())
+                .into(mBinding.moviePosterImageview);
     }
 
     private void initToolbar() {
@@ -72,6 +85,51 @@ public class DetailsActivity extends AppCompatActivity {
                     isShow = false;
                 }
             }
+        });
+    }
+
+    private void initFab() {
+        updateFabIcon(mMovie);
+
+        mBinding.favoriteFab.setOnClickListener(v -> {
+            updateFavourite(mMovie, movie -> AppExecutors.getInstance().mainThread().execute(() -> {
+                updateFabIcon(movie);
+                if (movie.isFavourite())
+                    Snackbar.make(mBinding.coordinatorView, R.string.label_movie_added_to_favourites,
+                            Snackbar.LENGTH_LONG).show();
+                else
+                    Snackbar.make(mBinding.coordinatorView, R.string.label_movie_removed_from_favourites,
+                            Snackbar.LENGTH_LONG).show();
+            }));
+        });
+    }
+
+    private void updateFabIcon(Movie movie) {
+        mBinding.favoriteFab.setEnabled(true);
+        if (movie.isFavourite())
+            mBinding.favoriteFab.setImageResource(R.drawable.ic_star_white);
+        else
+            mBinding.favoriteFab.setImageResource(R.drawable.ic_star_border_white);
+    }
+
+
+    private void updateFavourite(Movie movie, FavouriteMovieUpdateListener listener) {
+        mBinding.favoriteFab.setEnabled(false);
+
+        ContentResolver contentResolver = getContentResolver();
+        AppExecutors.getInstance().diskIO().execute(() -> {
+            if (movie.isFavourite())
+                contentResolver.delete(
+                        MoviesContract.MovieEntry.buildMovieUri(movie.getId()),
+                        null,
+                        null);
+            else
+                contentResolver.insert(
+                        MoviesContract.MovieEntry.buildMovieUri(movie.getId()),
+                        ContentValuesHelper.toContentValues(movie));
+
+            movie.setFavourite(!movie.isFavourite());
+            listener.onFavouriteMovieUpdated(movie);
         });
     }
 

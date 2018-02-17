@@ -32,7 +32,7 @@
 
         <provider
             android:name=".database.MovieProvider"
-            android:authorities="@string/content_authority"
+            android:authorities="it.communikein.popularmovies"
             android:exported="false"/>
     </application>
 

@@ -238,13 +238,17 @@ public class MainActivity extends AppCompatActivity implements
                     .forceLoad();
         }
         else {
+            mBinding.swipeRefresh.setRefreshing(false);
+
             Snackbar.make(mBinding.coordinatorView, R.string.error_no_internet,
                     Snackbar.LENGTH_LONG).setAction(R.string.retry, v -> {
                 getSupportLoaderManager()
                         .restartLoader(loader_id, null, MainActivity.this)
                         .forceLoad();
             }).show();
-            mBinding.swipeRefresh.setRefreshing(false);
+
+            moviesDataset = new Dataset<>(0, 1, 0, new ArrayList<>());
+            handleMovies();
         }
     }
 

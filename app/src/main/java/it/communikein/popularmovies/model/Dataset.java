@@ -51,11 +51,11 @@ public class Dataset<T extends ParcelableItem> implements Parcelable {
         this.page = page;
     }
 
-    private int getTotalResults() {
+    public int getTotalResults() {
         return totalResults;
     }
 
-    private void setTotalResults(int totalResults) {
+    public void setTotalResults(int totalResults) {
         this.totalResults = totalResults;
     }
 
@@ -63,7 +63,7 @@ public class Dataset<T extends ParcelableItem> implements Parcelable {
         return totalPages;
     }
 
-    private void setTotalPages(int totalPages) {
+    public void setTotalPages(int totalPages) {
         this.totalPages = totalPages;
     }
 
@@ -71,7 +71,7 @@ public class Dataset<T extends ParcelableItem> implements Parcelable {
         return results;
     }
 
-    private void setResults(List<T> results) {
+    public void setResults(List<T> results) {
         this.results = results;
     }
 

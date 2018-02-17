@@ -16,4 +16,7 @@
     <string name="placeholder_date">4.01.2018</string>
     <string name="error_no_internet">You\'re phone has no internet access :(</string>
     <string name="retry">Retry</string>
+    <string name="label_movie_added_to_favourites">Movie saved to favourites</string>
+    <string name="label_movie_removed_from_favourites">Movie removed from favourites</string>
+    <string name="release_date_label">Released:</string>
 </resources>

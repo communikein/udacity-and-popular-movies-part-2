@@ -33,8 +33,8 @@ public class MovieProvider extends ContentProvider {
         matcher.addURI(authority, MoviesContract.PATH_REVIEWS, CODE_REVIEWS);
         matcher.addURI(authority, MoviesContract.PATH_REVIEWS + "/#", CODE_REVIEWS_WITH_ID);
 
-        matcher.addURI(authority, MoviesContract.PATH_MOVIES, CODE_VIDEOS);
-        matcher.addURI(authority, MoviesContract.PATH_MOVIES + "/#", CODE_VIDEOS_WITH_ID);
+        matcher.addURI(authority, MoviesContract.PATH_VIDEOS, CODE_VIDEOS);
+        matcher.addURI(authority, MoviesContract.PATH_VIDEOS + "/#", CODE_VIDEOS_WITH_ID);
 
         return matcher;
     }
@@ -167,7 +167,7 @@ public class MovieProvider extends ContentProvider {
                 db.beginTransaction();
                 boolean inserted;
                 try {
-                    inserted = db.insert(MoviesContract.MovieEntry.TABLE_NAME, null, values) == 1;
+                    inserted = db.insert(MoviesContract.MovieEntry.TABLE_NAME, null, values) != -1;
                     db.setTransactionSuccessful();
                 } finally {
                     db.endTransaction();
