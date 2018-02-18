@@ -2,23 +2,45 @@ package it.communikein.popularmovies;
 
 import android.content.ContentResolver;
 import android.content.Intent;
+import android.database.Cursor;
 import android.databinding.DataBindingUtil;
+import android.net.Uri;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.CursorLoader;
+import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.LinearLayoutManager;
 import android.view.MenuItem;
+import android.view.View;
 
 import com.squareup.picasso.Picasso;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import it.communikein.popularmovies.database.MoviesContract;
 import it.communikein.popularmovies.databinding.ActivityDetailsBinding;
+import it.communikein.popularmovies.model.Dataset;
 import it.communikein.popularmovies.model.Movie;
+import it.communikein.popularmovies.model.Review;
+import it.communikein.popularmovies.model.Video;
+import it.communikein.popularmovies.network.MoviesLoader;
+import it.communikein.popularmovies.network.NetworkUtils;
+import it.communikein.popularmovies.network.ReviewsLoader;
+import it.communikein.popularmovies.network.VideosLoader;
 import it.communikein.popularmovies.utilities.ContentValuesHelper;
 
-public class DetailsActivity extends AppCompatActivity {
+public class DetailsActivity extends AppCompatActivity implements
+        VideosListAdapter.VideoClickCallback, LoaderManager.LoaderCallbacks, ReviewsListAdapter.ReviewClickCallback {
 
     public static final String KEY_MOVIE = "MOVIE";
+
+    public static final int LOADER_VIDEOS_ID = 100;
+    public static final int LOADER_REVIEWS_ID = 200;
+
 
     public interface FavouriteMovieUpdateListener {
         void onFavouriteMovieUpdated(Movie movie);
@@ -36,12 +58,22 @@ public class DetailsActivity extends AppCompatActivity {
         parseData();
         initToolbar();
         initFab();
+
+        initVideosList();
+        initReviewsList();
     }
 
     private void parseData() {
         Intent startIntent = getIntent();
-        if (startIntent != null)
-            mMovie = startIntent.getParcelableExtra(KEY_MOVIE);
+        if (startIntent == null) {
+            finish();
+            return;
+        }
+
+        mMovie = startIntent.getParcelableExtra(KEY_MOVIE);
+
+        startLoader(LOADER_VIDEOS_ID);
+        startLoader(LOADER_REVIEWS_ID);
 
         mBinding.titleTextview.setText(mMovie.getOriginalTitle());
         mBinding.descriptionTextview.setText(mMovie.getOverview());
@@ -112,6 +144,43 @@ public class DetailsActivity extends AppCompatActivity {
             mBinding.favoriteFab.setImageResource(R.drawable.ic_star_border_white);
     }
 
+    private void initVideosList() {
+        LinearLayoutManager layoutManager = new LinearLayoutManager(this,
+                LinearLayoutManager.HORIZONTAL,
+                false);
+        mBinding.videosList.setLayoutManager(layoutManager);
+        mBinding.videosList.setHasFixedSize(true);
+
+        VideosListAdapter videosListAdapter = new VideosListAdapter(this);
+        mBinding.videosList.setAdapter(videosListAdapter);
+    }
+
+    @Override
+    public void onListVideoClick(Video video) {
+        Intent youtubeIntent = NetworkUtils.getYoutubeVideoIntent(video.getKey());
+        startActivity(youtubeIntent);
+    }
+
+    private void initReviewsList() {
+        LinearLayoutManager layoutManager = new LinearLayoutManager(this,
+                LinearLayoutManager.HORIZONTAL,
+                false);
+        mBinding.reviewsList.setLayoutManager(layoutManager);
+        mBinding.reviewsList.setHasFixedSize(true);
+
+        ReviewsListAdapter reviewsListAdapter = new ReviewsListAdapter(this);
+        mBinding.reviewsList.setAdapter(reviewsListAdapter);
+    }
+
+    @Override
+    public void onReviewClick(Review review) {
+        ShowReviewDialog dialog = new ShowReviewDialog()
+                .setReview(review);
+
+        dialog.setCancelable(true);
+        dialog.show(getSupportFragmentManager(), ShowReviewDialog.class.getSimpleName());
+    }
+
 
     private void updateFavourite(Movie movie, FavouriteMovieUpdateListener listener) {
         mBinding.favoriteFab.setEnabled(false);
@@ -132,6 +201,79 @@ public class DetailsActivity extends AppCompatActivity {
             listener.onFavouriteMovieUpdated(movie);
         });
     }
+
+
+    private void startLoader(int loaderId) {
+        // TODO: Remember to check if the movie is favourite
+
+        if (NetworkUtils.isDeviceOnline(this))
+            getSupportLoaderManager()
+                    .restartLoader(loaderId, null, DetailsActivity.this)
+                    .forceLoad();
+        else
+            Snackbar.make(mBinding.coordinatorView, R.string.error_no_internet, Snackbar.LENGTH_LONG)
+                    .setAction(R.string.retry, v -> startLoader(loaderId))
+                    .show();
+    }
+
+    @Override
+    public Loader onCreateLoader(int id, Bundle args) {
+        switch (id) {
+            case LOADER_VIDEOS_ID:
+                return VideosLoader.createVideosLoader(this, mMovie);
+
+            case LOADER_REVIEWS_ID:
+                return ReviewsLoader.createReviewsLoader(this, mMovie, 1);
+
+            default:
+                throw new RuntimeException("Loader Not Implemented: " + id);
+        }
+    }
+
+    @Override
+    public void onLoadFinished(Loader loader, Object data) {
+        switch (loader.getId()) {
+            case LOADER_VIDEOS_ID:
+                List<Video> videos = (List<Video>) data;
+                mMovie.setVideos(videos);
+
+                if (videos.size() == 0) {
+                    mBinding.labelVideos.setVisibility(View.GONE);
+                    mBinding.videosList.setVisibility(View.GONE);
+                }
+                else {
+                    mBinding.labelVideos.setVisibility(View.VISIBLE);
+                    mBinding.videosList.setVisibility(View.VISIBLE);
+
+                    VideosListAdapter videoAdapter = (VideosListAdapter) mBinding.videosList.getAdapter();
+                    videoAdapter.setList(videos);
+                    videoAdapter.notifyDataSetChanged();
+                }
+                break;
+
+            case LOADER_REVIEWS_ID:
+                Dataset<Review> reviews = (Dataset<Review>) data;
+                mMovie.setReviews(reviews.getResults());
+
+                if (reviews.getResults().size() == 0) {
+                    mBinding.labelReviews.setVisibility(View.GONE);
+                    mBinding.reviewsList.setVisibility(View.GONE);
+                }
+                else {
+                    mBinding.labelReviews.setVisibility(View.VISIBLE);
+                    mBinding.reviewsList.setVisibility(View.VISIBLE);
+
+                    ReviewsListAdapter reviewsAdapter = (ReviewsListAdapter) mBinding.reviewsList.getAdapter();
+                    reviewsAdapter.setList(reviews.getResults());
+                    reviewsAdapter.notifyDataSetChanged();
+                }
+                break;
+        }
+    }
+
+    @Override
+    public void onLoaderReset(Loader loader) { }
+
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {

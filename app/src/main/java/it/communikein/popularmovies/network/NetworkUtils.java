@@ -23,7 +23,7 @@ public class NetworkUtils {
     private static final String API_KEY_PARAM = "api_key";
     private static final String API_PAGE_PARAM = "page";
 
-    private static final String API_VIDEOS_PATH = "video";
+    private static final String API_VIDEOS_PATH = "videos";
     private static final String API_REVIEWS_PATH = "reviews";
     private static final String API_POPULAR_PATH = "popular";
     private static final String API_TOP_RATED_PATH = "top_rated";

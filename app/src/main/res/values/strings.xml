@@ -19,4 +19,12 @@
     <string name="label_movie_added_to_favourites">Movie saved to favourites</string>
     <string name="label_movie_removed_from_favourites">Movie removed from favourites</string>
     <string name="release_date_label">Released:</string>
+    <string name="placeholder_video_name">Official Trailer 1</string>
+    <string name="label_video_play">Play video</string>
+
+    <string name="review_content">&#8220; %1$s &#8222;</string>
+    <string name="label_videos">Videos</string>
+    <string name="label_reviews">Reviews</string>
+    <string name="label_overview">Overview</string>
+    <string name="error_video_not_from_youtube">Cannot play this video (not YouTube) :(</string>
 </resources>
