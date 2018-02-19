@@ -65,6 +65,7 @@ public class VideosLoader extends AsyncTaskLoader<List<Video>> {
             else
                 return null;
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }

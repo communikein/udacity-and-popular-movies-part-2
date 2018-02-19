@@ -94,7 +94,23 @@ public class DetailsActivity extends AppCompatActivity implements
         initVideosList();
         initReviewsList();
 
-        loadReviewsVideos();
+        if (mMovie.getVideos() == null || mMovie.getReviews() == null)
+            loadReviewsVideos();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        outState.putParcelable(KEY_MOVIE, mMovie);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+
+        if (savedInstanceState.containsKey(KEY_MOVIE))
+            mMovie = savedInstanceState.getParcelable(KEY_MOVIE);
     }
 
     @Override
@@ -219,6 +235,11 @@ public class DetailsActivity extends AppCompatActivity implements
 
         VideosListAdapter videosListAdapter = new VideosListAdapter(this);
         mBinding.videosList.setAdapter(videosListAdapter);
+
+        if (mMovie.getVideos() != null) {
+            videosListAdapter.setList(mMovie.getVideos());
+            videosListAdapter.notifyDataSetChanged();
+        }
     }
 
     private void loadReviewsVideos() {
@@ -290,6 +311,11 @@ public class DetailsActivity extends AppCompatActivity implements
 
         ReviewsListAdapter reviewsListAdapter = new ReviewsListAdapter(this);
         mBinding.reviewsList.setAdapter(reviewsListAdapter);
+
+        if (mMovie.getReviews() != null) {
+            reviewsListAdapter.setList(mMovie.getReviews());
+            reviewsListAdapter.notifyDataSetChanged();
+        }
     }
 
     @Override
@@ -478,7 +504,7 @@ public class DetailsActivity extends AppCompatActivity implements
                 onBackPressed();
                 return true;
             case R.id.action_share:
-                if (mMovie.getVideos().size() > 0){
+                if (mMovie.getVideos() != null && mMovie.getVideos().size() > 0){
                     Intent shareIntent = createShareIntent(mMovie);
                     startActivity(shareIntent);
                 }
