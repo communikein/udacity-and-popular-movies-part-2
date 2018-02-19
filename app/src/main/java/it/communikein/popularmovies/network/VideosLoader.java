@@ -53,7 +53,11 @@ public class VideosLoader extends AsyncTaskLoader<List<Video>> {
 
                 JSONObject obj = new JSONObject(response.getString(NetworkUtils.KEY_DATA));
                 if (obj.has(Dataset.RESULTS)) {
-                    return new Gson().fromJson(obj.getJSONArray(Dataset.RESULTS).toString(), type);
+                    List<Video> videos = new Gson().fromJson(obj.getJSONArray(Dataset.RESULTS).toString(), type);
+                    for (Video video : videos)
+                        video.setMovieId(mMovie.getId());
+
+                    return videos;
                 }
                 else
                     return null;

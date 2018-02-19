@@ -53,10 +53,12 @@ public class MovieProvider extends ContentProvider {
         switch (sUriMatcher.match(uri)) {
 
             case CODE_REVIEWS:
+            case CODE_REVIEWS_WITH_ID:
                 tableName = MoviesContract.ReviewEntry.TABLE_NAME;
                 break;
 
             case CODE_VIDEOS:
+            case CODE_VIDEOS_WITH_ID:
                 tableName = MoviesContract.VideoEntry.TABLE_NAME;
                 break;
 
@@ -89,34 +91,41 @@ public class MovieProvider extends ContentProvider {
                         String[] selectionArgs, String sortOrder) {
 
         String tableName;
+        String select = selection;
         switch (sUriMatcher.match(uri)) {
             case CODE_MOVIES:
                 tableName = MoviesContract.MovieEntry.TABLE_NAME;
                 break;
 
+            case CODE_MOVIE_WITH_ID:
+                tableName = MoviesContract.MovieEntry.TABLE_NAME;
+                select = MoviesContract.MovieEntry.COLUMN_ID + "=" + uri.getLastPathSegment();
+                break;
+
             case CODE_REVIEWS_WITH_ID:
                 tableName = MoviesContract.ReviewEntry.TABLE_NAME;
+                select = MoviesContract.ReviewEntry.COLUMN_MOVIE_ID + "=" + uri.getLastPathSegment();
                 break;
 
             case CODE_VIDEOS_WITH_ID:
                 tableName = MoviesContract.VideoEntry.TABLE_NAME;
+                select = MoviesContract.VideoEntry.COLUMN_MOVIE_ID + "=" + uri.getLastPathSegment();
                 break;
 
             default:
                 throw new UnsupportedOperationException("Unknown uri: " + uri);
         }
-
-        Cursor cursor = mOpenHelper.getReadableDatabase().query(
+        Cursor cursorMovies = mOpenHelper.getReadableDatabase().query(
                 tableName,
                 projection,
-                selection,
+                select,
                 selectionArgs,
                 null,
                 null,
-                sortOrder);
+                null);
 
-        cursor.setNotificationUri(getContext().getContentResolver(), uri);
-        return cursor;
+        cursorMovies.setNotificationUri(getContext().getContentResolver(), uri);
+        return cursorMovies;
     }
 
     @Override
@@ -161,29 +170,40 @@ public class MovieProvider extends ContentProvider {
     public Uri insert(@NonNull Uri uri, ContentValues values) {
         final SQLiteDatabase db = mOpenHelper.getWritableDatabase();
 
+        String tableName;
         switch (sUriMatcher.match(uri)) {
-
             case CODE_MOVIE_WITH_ID:
-                db.beginTransaction();
-                boolean inserted;
-                try {
-                    inserted = db.insert(MoviesContract.MovieEntry.TABLE_NAME, null, values) != -1;
-                    db.setTransactionSuccessful();
-                } finally {
-                    db.endTransaction();
-                }
+                tableName = MoviesContract.MovieEntry.TABLE_NAME;
+                break;
 
-                if (inserted) {
-                    getContext().getContentResolver().notifyChange(uri, null);
+            case CODE_REVIEWS_WITH_ID:
+                tableName = MoviesContract.ReviewEntry.TABLE_NAME;
+                break;
 
-                    return uri;
-                }
-                else
-                    return null;
+            case CODE_VIDEOS_WITH_ID:
+                tableName = MoviesContract.VideoEntry.TABLE_NAME;
+                break;
 
             default:
                 throw new RuntimeException("Command not recognised by this provider.");
         }
+
+        db.beginTransaction();
+        boolean inserted;
+        try {
+            inserted = db.insert(tableName, null, values) != -1;
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+
+        if (inserted) {
+            getContext().getContentResolver().notifyChange(uri, null);
+
+            return uri;
+        }
+        else
+            return null;
     }
 
     @Override

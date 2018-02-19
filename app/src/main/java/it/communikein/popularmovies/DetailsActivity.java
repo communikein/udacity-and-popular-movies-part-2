@@ -4,11 +4,9 @@ import android.content.ContentResolver;
 import android.content.Intent;
 import android.database.Cursor;
 import android.databinding.DataBindingUtil;
-import android.net.Uri;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.LoaderManager;
-import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -27,20 +25,49 @@ import it.communikein.popularmovies.model.Dataset;
 import it.communikein.popularmovies.model.Movie;
 import it.communikein.popularmovies.model.Review;
 import it.communikein.popularmovies.model.Video;
-import it.communikein.popularmovies.network.MoviesLoader;
 import it.communikein.popularmovies.network.NetworkUtils;
 import it.communikein.popularmovies.network.ReviewsLoader;
 import it.communikein.popularmovies.network.VideosLoader;
 import it.communikein.popularmovies.utilities.ContentValuesHelper;
 
+import static it.communikein.popularmovies.database.MoviesContract.ReviewEntry;
+import static it.communikein.popularmovies.database.MoviesContract.VideoEntry;
+
 public class DetailsActivity extends AppCompatActivity implements
-        VideosListAdapter.VideoClickCallback, LoaderManager.LoaderCallbacks, ReviewsListAdapter.ReviewClickCallback {
+        VideosListAdapter.VideoClickCallback, LoaderManager.LoaderCallbacks,
+        ReviewsListAdapter.ReviewClickCallback {
 
     public static final String KEY_MOVIE = "MOVIE";
 
     public static final int LOADER_VIDEOS_ID = 100;
     public static final int LOADER_REVIEWS_ID = 200;
 
+    public static final String[] MOVIE_COLUMNS = new String[] {
+            MoviesContract.MovieEntry.COLUMN_ID
+    };
+    public static final int INDEX_MOVIE_ID = 0;
+
+    public static final String[] REVIEWS_COLUMNS = new String[] {
+            ReviewEntry.COLUMN_ID,
+            ReviewEntry.COLUMN_AUTHOR,
+            ReviewEntry.COLUMN_CONTENT,
+            ReviewEntry.COLUMN_URL
+    };
+    public static final int INDEX_REVIEW_ID = 0;
+    public static final int INDEX_REVIEW_AUTHOR = 1;
+    public static final int INDEX_REVIEW_CONTENT = 2;
+    public static final int INDEX_REVIEW_URL = 3;
+
+    public static final String[] VIDEOS_COLUMNS = new String[] {
+            VideoEntry.COLUMN_ID,
+            VideoEntry.COLUMN_KEY,
+            VideoEntry.COLUMN_NAME,
+            VideoEntry.COLUMN_WEBSITE
+    };
+    public static final int INDEX_VIDEO_ID = 0;
+    public static final int INDEX_VIDEO_KEY = 1;
+    public static final int INDEX_VIDEO_NAME = 2;
+    public static final int INDEX_VIDEO_WEBSITE = 3;
 
     public interface FavouriteMovieUpdateListener {
         void onFavouriteMovieUpdated(Movie movie);
@@ -61,6 +88,8 @@ public class DetailsActivity extends AppCompatActivity implements
 
         initVideosList();
         initReviewsList();
+
+        loadReviewsVideos();
     }
 
     private void parseData() {
@@ -72,8 +101,7 @@ public class DetailsActivity extends AppCompatActivity implements
 
         mMovie = startIntent.getParcelableExtra(KEY_MOVIE);
 
-        startLoader(LOADER_VIDEOS_ID);
-        startLoader(LOADER_REVIEWS_ID);
+        checkIfFavourite();
 
         mBinding.titleTextview.setText(mMovie.getOriginalTitle());
         mBinding.descriptionTextview.setText(mMovie.getOverview());
@@ -84,6 +112,21 @@ public class DetailsActivity extends AppCompatActivity implements
         Picasso.with(this)
                 .load(mMovie.getPosterFullPath())
                 .into(mBinding.moviePosterImageview);
+    }
+
+    private void checkIfFavourite() {
+        AppExecutors.getInstance().diskIO().execute(() -> {
+            Cursor cursor = getContentResolver().query(
+                    MoviesContract.MovieEntry.buildMovieUri(mMovie.getId()),
+                    MOVIE_COLUMNS,
+                    null,
+                    null,
+                    null);
+
+            mMovie.setFavourite(parseMovieCursor(cursor) != -1);
+
+            AppExecutors.getInstance().mainThread().execute(() -> updateFab(mMovie));
+        });
     }
 
     private void initToolbar() {
@@ -121,11 +164,12 @@ public class DetailsActivity extends AppCompatActivity implements
     }
 
     private void initFab() {
-        updateFabIcon(mMovie);
+        updateFab(mMovie);
 
         mBinding.favoriteFab.setOnClickListener(v -> {
             updateFavourite(mMovie, movie -> AppExecutors.getInstance().mainThread().execute(() -> {
-                updateFabIcon(movie);
+                updateFab(movie);
+
                 if (movie.isFavourite())
                     Snackbar.make(mBinding.coordinatorView, R.string.label_movie_added_to_favourites,
                             Snackbar.LENGTH_LONG).show();
@@ -136,12 +180,13 @@ public class DetailsActivity extends AppCompatActivity implements
         });
     }
 
-    private void updateFabIcon(Movie movie) {
-        mBinding.favoriteFab.setEnabled(true);
+    private void updateFab(Movie movie) {
+        mBinding.favoriteFab.setEnabled(movie.getReviews() != null && movie.getVideos() != null);
+
         if (movie.isFavourite())
-            mBinding.favoriteFab.setImageResource(R.drawable.ic_star_white);
-        else
             mBinding.favoriteFab.setImageResource(R.drawable.ic_star_border_white);
+        else
+            mBinding.favoriteFab.setImageResource(R.drawable.ic_star_white);
     }
 
     private void initVideosList() {
@@ -153,6 +198,60 @@ public class DetailsActivity extends AppCompatActivity implements
 
         VideosListAdapter videosListAdapter = new VideosListAdapter(this);
         mBinding.videosList.setAdapter(videosListAdapter);
+    }
+
+    private void loadReviewsVideos() {
+        if (mMovie.isFavourite()) {
+            Cursor cursor = getContentResolver().query(
+                    MoviesContract.ReviewEntry.buildMovieReviewsUri(mMovie.getId()),
+                    REVIEWS_COLUMNS,
+                    null,
+                    null,
+                    null);
+            mMovie.setReviews(parseReviewsCursor(cursor));
+            if (cursor != null) cursor.close();
+
+            if (mMovie.getReviews().size() == 0) {
+                mBinding.labelReviews.setVisibility(View.GONE);
+                mBinding.reviewsList.setVisibility(View.GONE);
+            }
+            else {
+                mBinding.labelReviews.setVisibility(View.VISIBLE);
+                mBinding.reviewsList.setVisibility(View.VISIBLE);
+
+                ReviewsListAdapter reviewsAdapter = (ReviewsListAdapter) mBinding.reviewsList.getAdapter();
+                reviewsAdapter.setList(mMovie.getReviews());
+                reviewsAdapter.notifyDataSetChanged();
+            }
+
+            cursor = getContentResolver().query(
+                    MoviesContract.VideoEntry.buildMovieVideosUri(mMovie.getId()),
+                    VIDEOS_COLUMNS,
+                    null,
+                    null,
+                    null);
+            mMovie.setVideos(parseVideosCursor(cursor));
+            if (cursor != null) cursor.close();
+
+            if (mMovie.getVideos().size() == 0) {
+                mBinding.labelVideos.setVisibility(View.GONE);
+                mBinding.videosList.setVisibility(View.GONE);
+            }
+            else {
+                mBinding.labelVideos.setVisibility(View.VISIBLE);
+                mBinding.videosList.setVisibility(View.VISIBLE);
+
+                VideosListAdapter videoAdapter = (VideosListAdapter) mBinding.videosList.getAdapter();
+                videoAdapter.setList(mMovie.getVideos());
+                videoAdapter.notifyDataSetChanged();
+            }
+
+            updateFab(mMovie);
+        }
+        else {
+            startLoader(LOADER_VIDEOS_ID);
+            startLoader(LOADER_REVIEWS_ID);
+        }
     }
 
     @Override
@@ -183,19 +282,27 @@ public class DetailsActivity extends AppCompatActivity implements
 
 
     private void updateFavourite(Movie movie, FavouriteMovieUpdateListener listener) {
-        mBinding.favoriteFab.setEnabled(false);
-
         ContentResolver contentResolver = getContentResolver();
         AppExecutors.getInstance().diskIO().execute(() -> {
-            if (movie.isFavourite())
+            if (movie.isFavourite()) {
                 contentResolver.delete(
                         MoviesContract.MovieEntry.buildMovieUri(movie.getId()),
                         null,
                         null);
-            else
+            }
+            else {
                 contentResolver.insert(
                         MoviesContract.MovieEntry.buildMovieUri(movie.getId()),
                         ContentValuesHelper.toContentValues(movie));
+
+                contentResolver.bulkInsert(
+                        MoviesContract.ReviewEntry.buildMovieReviewsUri(movie.getId()),
+                        ContentValuesHelper.toReviewArrayContentValues(movie.getReviews()));
+
+                contentResolver.bulkInsert(
+                        MoviesContract.VideoEntry.buildMovieVideosUri(movie.getId()),
+                        ContentValuesHelper.toVideoArrayContentValues(movie.getVideos()));
+            }
 
             movie.setFavourite(!movie.isFavourite());
             listener.onFavouriteMovieUpdated(movie);
@@ -204,9 +311,7 @@ public class DetailsActivity extends AppCompatActivity implements
 
 
     private void startLoader(int loaderId) {
-        // TODO: Remember to check if the movie is favourite
-
-        if (NetworkUtils.isDeviceOnline(this))
+        if (mMovie.isFavourite() || NetworkUtils.isDeviceOnline(this))
             getSupportLoaderManager()
                     .restartLoader(loaderId, null, DetailsActivity.this)
                     .forceLoad();
@@ -237,6 +342,7 @@ public class DetailsActivity extends AppCompatActivity implements
                 List<Video> videos = (List<Video>) data;
                 mMovie.setVideos(videos);
 
+                updateFab(mMovie);
                 if (videos.size() == 0) {
                     mBinding.labelVideos.setVisibility(View.GONE);
                     mBinding.videosList.setVisibility(View.GONE);
@@ -248,6 +354,11 @@ public class DetailsActivity extends AppCompatActivity implements
                     VideosListAdapter videoAdapter = (VideosListAdapter) mBinding.videosList.getAdapter();
                     videoAdapter.setList(videos);
                     videoAdapter.notifyDataSetChanged();
+
+                    if (mMovie.isFavourite())
+                        getContentResolver().bulkInsert(
+                                MoviesContract.VideoEntry.CONTENT_URI,
+                                ContentValuesHelper.toVideoArrayContentValues(videos));
                 }
                 break;
 
@@ -255,6 +366,7 @@ public class DetailsActivity extends AppCompatActivity implements
                 Dataset<Review> reviews = (Dataset<Review>) data;
                 mMovie.setReviews(reviews.getResults());
 
+                updateFab(mMovie);
                 if (reviews.getResults().size() == 0) {
                     mBinding.labelReviews.setVisibility(View.GONE);
                     mBinding.reviewsList.setVisibility(View.GONE);
@@ -266,6 +378,11 @@ public class DetailsActivity extends AppCompatActivity implements
                     ReviewsListAdapter reviewsAdapter = (ReviewsListAdapter) mBinding.reviewsList.getAdapter();
                     reviewsAdapter.setList(reviews.getResults());
                     reviewsAdapter.notifyDataSetChanged();
+
+                    if (mMovie.isFavourite())
+                        getContentResolver().bulkInsert(
+                                MoviesContract.ReviewEntry.CONTENT_URI,
+                                ContentValuesHelper.toReviewArrayContentValues(reviews.getResults()));
                 }
                 break;
         }
@@ -273,6 +390,50 @@ public class DetailsActivity extends AppCompatActivity implements
 
     @Override
     public void onLoaderReset(Loader loader) { }
+
+
+    private List<Review> parseReviewsCursor(Cursor cursor) {
+        List<Review> reviews = new ArrayList<>();
+
+        if (cursor != null) for (int i=0; i<cursor.getCount(); i++) {
+            cursor.moveToPosition(i);
+
+            String id = cursor.getString(INDEX_REVIEW_ID);
+            String author = cursor.getString(INDEX_REVIEW_AUTHOR);
+            String content = cursor.getString(INDEX_REVIEW_CONTENT);
+            String url = cursor.getString(INDEX_REVIEW_URL);
+
+            Review review = new Review(id, author, content, url, mMovie.getId());
+            reviews.add(review);
+        }
+
+        return reviews;
+    }
+
+    private List<Video> parseVideosCursor(Cursor cursor) {
+        List<Video> videos = new ArrayList<>();
+
+        if (cursor != null) for (int i=0; i<cursor.getCount(); i++) {
+            cursor.moveToPosition(i);
+
+            String id = cursor.getString(INDEX_VIDEO_ID);
+            String key = cursor.getString(INDEX_VIDEO_KEY);
+            String name = cursor.getString(INDEX_VIDEO_NAME);
+            String website  = cursor.getString(INDEX_VIDEO_WEBSITE);
+
+            Video video = new Video(id, key, name, website, mMovie.getId());
+            videos.add(video);
+        }
+
+        return videos;
+    }
+
+    private int parseMovieCursor(Cursor cursor) {
+        if (cursor == null || cursor.getCount() != 1) return -1;
+
+        cursor.moveToFirst();
+        return cursor.getInt(INDEX_MOVIE_ID);
+    }
 
 
     @Override

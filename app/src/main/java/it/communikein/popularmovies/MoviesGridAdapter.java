@@ -23,7 +23,7 @@ public class MoviesGridAdapter extends RecyclerView.Adapter<MoviesGridAdapter.Mo
     @Nullable
     private final MovieClickCallback mOnClickListener;
     public interface MovieClickCallback {
-        void onListNewsClick(Movie movie);
+        void onMovieClick(Movie movie);
     }
 
     MoviesGridAdapter(@Nullable MovieClickCallback movieClickCallback) {
@@ -108,7 +108,7 @@ public class MoviesGridAdapter extends RecyclerView.Adapter<MoviesGridAdapter.Mo
             Movie clicked = mBinding.getMovie();
 
             if (mOnClickListener != null)
-                mOnClickListener.onListNewsClick(clicked);
+                mOnClickListener.onMovieClick(clicked);
         }
 
         void bindData(Movie movie) {

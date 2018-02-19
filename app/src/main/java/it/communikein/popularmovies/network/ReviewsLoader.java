@@ -10,6 +10,7 @@ import com.google.gson.reflect.TypeToken;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Type;
 import java.net.URL;
+import java.util.List;
 
 import it.communikein.popularmovies.model.Dataset;
 import it.communikein.popularmovies.model.Movie;
@@ -47,7 +48,11 @@ public class ReviewsLoader extends AsyncTaskLoader<Dataset<Review>> {
             Bundle response = NetworkUtils.getResponseFromHttpUrl(url);
             if (response.containsKey(NetworkUtils.KEY_DATA)) {
                 Type type = new TypeToken<Dataset<Review>>(){}.getType();
-                return new Gson().fromJson(response.getString(NetworkUtils.KEY_DATA), type);
+                Dataset<Review> reviews = new Gson().fromJson(response.getString(NetworkUtils.KEY_DATA), type);
+                for (Review review : reviews.getResults())
+                    review.setMovieId(mMovie.getId());
+
+                return reviews;
             }
             else
                 return null;

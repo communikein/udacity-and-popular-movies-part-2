@@ -23,8 +23,12 @@ import it.communikein.popularmovies.database.MoviesContract;
 import it.communikein.popularmovies.model.Dataset;
 import it.communikein.popularmovies.databinding.ActivityMainBinding;
 import it.communikein.popularmovies.model.Movie;
+import it.communikein.popularmovies.model.Review;
 import it.communikein.popularmovies.network.MoviesLoader;
 import it.communikein.popularmovies.network.NetworkUtils;
+import it.communikein.popularmovies.database.MoviesContract.MovieEntry;
+import it.communikein.popularmovies.database.MoviesContract.ReviewEntry;
+import it.communikein.popularmovies.database.MoviesContract.VideoEntry;
 
 
 public class MainActivity extends AppCompatActivity implements
@@ -44,12 +48,12 @@ public class MainActivity extends AppCompatActivity implements
     private static final int LOADER_MORE_FAVOURITE_MOVIES_ID = 1013;
 
     public static final String[] MAIN_MOVIES_PROJECTION = {
-            MoviesContract.MovieEntry.COLUMN_ID,
-            MoviesContract.MovieEntry.COLUMN_VOTE_AVERAGE,
-            MoviesContract.MovieEntry.COLUMN_POSTER_PATH,
-            MoviesContract.MovieEntry.COLUMN_ORIGINAL_TITLE,
-            MoviesContract.MovieEntry.COLUMN_OVERVIEW,
-            MoviesContract.MovieEntry.COLUMN_RELEASE_DATE
+            MovieEntry.TABLE_NAME + "." + MovieEntry.COLUMN_ID,
+            MovieEntry.TABLE_NAME + "." + MovieEntry.COLUMN_VOTE_AVERAGE,
+            MovieEntry.TABLE_NAME + "." + MovieEntry.COLUMN_POSTER_PATH,
+            MovieEntry.TABLE_NAME + "." + MovieEntry.COLUMN_ORIGINAL_TITLE,
+            MovieEntry.TABLE_NAME + "." + MovieEntry.COLUMN_OVERVIEW,
+            MovieEntry.TABLE_NAME + "." + MovieEntry.COLUMN_RELEASE_DATE
     };
 
     public static final int INDEX_MOVIE_ID = 0;
@@ -305,7 +309,7 @@ public class MainActivity extends AppCompatActivity implements
 
 
     @Override
-    public void onListNewsClick(Movie movie) {
+    public void onMovieClick(Movie movie) {
         Intent intent = new Intent(this, DetailsActivity.class);
         intent.putExtra(DetailsActivity.KEY_MOVIE, movie);
         startActivity(intent);

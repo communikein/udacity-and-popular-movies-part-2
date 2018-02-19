@@ -29,7 +29,17 @@ public class MoviesDatabaseHelper extends SQLiteOpenHelper {
                         MovieEntry.COLUMN_OVERVIEW         + " TEXT NOT NULL, "       +
                         MovieEntry.COLUMN_POSTER_PATH      + " TEXT NOT NULL, "       +
                         MovieEntry.COLUMN_RELEASE_DATE     + " INTEGER NOT NULL, "    +
-                        MovieEntry.COLUMN_VOTE_AVERAGE     + " REAL NOT NULL);";
+                        MovieEntry.COLUMN_VOTE_AVERAGE     + " REAL NOT NULL"         +
+                        ");";
+
+        final String SQL_CREATE_VIDEOS_TABLE =
+                "CREATE TABLE " + VideoEntry.TABLE_NAME + " (" +
+                        VideoEntry.COLUMN_ID               + " TEXT PRIMARY KEY, "    +
+                        VideoEntry.COLUMN_KEY              + " TEXT NOT NULL, "       +
+                        VideoEntry.COLUMN_NAME             + " TEXT NOT NULL, "       +
+                        VideoEntry.COLUMN_WEBSITE          + " TEXT, "                +
+                        VideoEntry.COLUMN_MOVIE_ID         + " INTEGER NOT NULL"      +
+                        ");";
 
         final String SQL_CREATE_REVIEWS_TABLE =
                 "CREATE TABLE " + ReviewEntry.TABLE_NAME + " (" +
@@ -37,15 +47,8 @@ public class MoviesDatabaseHelper extends SQLiteOpenHelper {
                         ReviewEntry.COLUMN_AUTHOR          + " TEXT NOT NULL, "       +
                         ReviewEntry.COLUMN_CONTENT         + " TEXT NOT NULL, "       +
                         ReviewEntry.COLUMN_URL             + " TEXT NOT NULL, "       +
-                        ReviewEntry.COLUMN_MOVIE_ID        + " INTEGER NOT NULL);";
-
-        final String SQL_CREATE_VIDEOS_TABLE =
-                "CREATE TABLE " + VideoEntry.TABLE_NAME + " (" +
-                        VideoEntry.COLUMN_ID               + " TEXT PRIMARY KEY, "    +
-                        VideoEntry.COLUMN_KEY              + " TEXT NOT NULL, "       +
-                        VideoEntry.COLUMN_NAME             + " TEXT NOT NULL, "       +
-                        VideoEntry.COLUMN_WEBSITE          + " TEXT NOT NULL, "       +
-                        VideoEntry.COLUMN_MOVIE_ID         + " INTEGER NOT NULL);";
+                        ReviewEntry.COLUMN_MOVIE_ID        + " INTEGER NOT NULL"      +
+                        ");";
 
         sqLiteDatabase.execSQL(SQL_CREATE_MOVIES_TABLE);
         sqLiteDatabase.execSQL(SQL_CREATE_REVIEWS_TABLE);

@@ -67,11 +67,19 @@ public class Movie extends ParcelableItem {
         setReleaseDate(in.readString());
         setFavourite(in.readInt() == 1);
 
-        setReviews(new ArrayList<>());
-        in.readTypedList(this.reviews, Review.CREATOR);
+        if (in.readInt() == 1) {
+            setReviews(new ArrayList<>());
+            in.readTypedList(this.reviews, Review.CREATOR);
+        }
+        else
+            setReviews(null);
 
-        setVideos(new ArrayList<>());
-        in.readTypedList(this.videos, Video.CREATOR);
+        if (in.readInt() == 1) {
+            setVideos(new ArrayList<>());
+            in.readTypedList(this.videos, Video.CREATOR);
+        }
+        else
+            setVideos(null);
     }
 
     public Movie(final int id, float voteAverage, String posterPath, String originalTitle,
@@ -97,8 +105,8 @@ public class Movie extends ParcelableItem {
         setOverview(overview);
         setReleaseDate(new Date(releaseDate));
         setFavourite(true);
-        setReviews(new ArrayList<>());
-        setVideos(new ArrayList<>());
+        setReviews(null);
+        setVideos(null);
     }
 
     public String getOriginalTitle() {
@@ -231,8 +239,14 @@ public class Movie extends ParcelableItem {
         dest.writeString(getOverview());
         dest.writeString(printReleaseDate());
         dest.writeInt(isFavourite() ? 1 : 0);
-        dest.writeTypedList(getReviews());
-        dest.writeTypedList(getVideos());
+
+        dest.writeInt((getReviews() != null && getReviews().size() > 0) ? 1 : 0);
+        if (getReviews() != null && getReviews().size() > 0)
+            dest.writeTypedList(getReviews());
+
+        dest.writeInt((getVideos() != null && getVideos().size() > 0) ? 1 : 0);
+        if (getVideos() != null && getVideos().size() > 0)
+            dest.writeTypedList(getVideos());
     }
 
     public static final Parcelable.Creator<Movie> CREATOR = new Parcelable.Creator<Movie>() {

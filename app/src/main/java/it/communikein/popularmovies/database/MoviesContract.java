@@ -29,7 +29,7 @@ public class MoviesContract {
         public static final String COLUMN_ORIGINAL_TITLE = Movie.ORIGINAL_TITLE;
         public static final String COLUMN_OVERVIEW = Movie.OVERVIEW;
         public static final String COLUMN_RELEASE_DATE = Movie.RELEASE_DATE;
-
+        
         public static Uri buildMovieUri(int id) {
             return CONTENT_URI.buildUpon()
                     .appendPath(Long.toString(id))
@@ -67,7 +67,7 @@ public class MoviesContract {
         public static final String TABLE_NAME = "videos";
 
         public static final String COLUMN_ID = Video.ID;
-        public static final String COLUMN_KEY = Video.KEY;
+        public static final String COLUMN_KEY = "video_" + Video.KEY;
         public static final String COLUMN_NAME = Video.NAME;
         public static final String COLUMN_WEBSITE = Video.WEBSITE;
         public static final String COLUMN_MOVIE_ID = Video.MOVIE_ID;
