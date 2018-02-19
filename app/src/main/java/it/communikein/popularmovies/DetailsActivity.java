@@ -2,15 +2,20 @@ package it.communikein.popularmovies;
 
 import android.content.ContentResolver;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.database.Cursor;
 import android.databinding.DataBindingUtil;
+import android.net.Uri;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.LoaderManager;
+import android.support.v4.app.ShareCompat;
 import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 
@@ -92,6 +97,14 @@ public class DetailsActivity extends AppCompatActivity implements
         loadReviewsVideos();
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.movie_details_menu, menu);
+
+        return true;
+    }
+
     private void parseData() {
         Intent startIntent = getIntent();
         if (startIntent == null) {
@@ -111,6 +124,8 @@ public class DetailsActivity extends AppCompatActivity implements
 
         Picasso.with(this)
                 .load(mMovie.getPosterFullPath())
+                .error(R.drawable.ic_broken_image_white)
+                .placeholder(R.drawable.ic_image_black_white)
                 .into(mBinding.moviePosterImageview);
     }
 
@@ -134,33 +149,39 @@ public class DetailsActivity extends AppCompatActivity implements
         if (getSupportActionBar() != null)
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
-        Picasso.with(this)
-                .load(mMovie.getPosterFullPath())
-                .into(mBinding.image);
+        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
+            Picasso.with(this)
+                    .load(mMovie.getPosterFullPath())
+                    .error(R.drawable.ic_broken_image_white)
+                    .placeholder(R.drawable.ic_image_black_white)
+                    .into(mBinding.image);
 
-        mBinding.collapsingToolbar.setTitle(" ");
-        mBinding.collapsingToolbar.setCollapsedTitleTextColor(getResources().getColor(R.color.white));
-        mBinding.appbar.addOnOffsetChangedListener(new AppBarLayout.OnOffsetChangedListener() {
-            boolean isShow = false;
-            int scrollRange = -1;
+            mBinding.collapsingToolbar.setTitle(" ");
+            mBinding.collapsingToolbar.setCollapsedTitleTextColor(getResources().getColor(R.color.white));
+            mBinding.appbar.addOnOffsetChangedListener(new AppBarLayout.OnOffsetChangedListener() {
+                boolean isShow = false;
+                int scrollRange = -1;
 
-            @Override
-            public void onOffsetChanged(AppBarLayout appBarLayout, int verticalOffset) {
-                if (scrollRange == -1) {
-                    scrollRange = appBarLayout.getTotalScrollRange();
+                @Override
+                public void onOffsetChanged(AppBarLayout appBarLayout, int verticalOffset) {
+                    if (scrollRange == -1) {
+                        scrollRange = appBarLayout.getTotalScrollRange();
+                    }
+                    if (scrollRange + verticalOffset == 0) {
+                        mBinding.collapsingToolbar.setTitle(mMovie.getOriginalTitle());
+                        mBinding.image.setAlpha(.7f);
+                        isShow = true;
+                    } else if (isShow) {
+                        // There should a space between double quote otherwise it won't work
+                        mBinding.collapsingToolbar.setTitle(" ");
+                        mBinding.image.setAlpha(1f);
+                        isShow = false;
+                    }
                 }
-                if (scrollRange + verticalOffset == 0) {
-                    mBinding.collapsingToolbar.setTitle(mMovie.getOriginalTitle());
-                    mBinding.image.setAlpha(.7f);
-                    isShow = true;
-                } else if(isShow) {
-                    // There should a space between double quote otherwise it won't work
-                    mBinding.collapsingToolbar.setTitle(" ");
-                    mBinding.image.setAlpha(1f);
-                    isShow = false;
-                }
-            }
-        });
+            });
+        }
+        else if (getSupportActionBar() != null)
+            getSupportActionBar().setTitle(mMovie.getOriginalTitle());
     }
 
     private void initFab() {
@@ -435,13 +456,38 @@ public class DetailsActivity extends AppCompatActivity implements
         return cursor.getInt(INDEX_MOVIE_ID);
     }
 
+    private Intent createShareIntent(Movie movie) {
+        Video video = movie.getVideos().get(0);
+        String uri = NetworkUtils.getYoutubeVideoIntent(video.getKey()).toUri(0);
+
+        StringBuilder message = new StringBuilder();
+        message.append(getString(R.string.share_video, movie.getOriginalTitle()))
+                .append("\n").append(uri);
+
+        return ShareCompat.IntentBuilder.from(this)
+                .setType("text/plain")
+                .setText(message)
+                .getIntent();
+    }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        if (id == android.R.id.home) {
-            onBackPressed();
-            return true;
+        switch (id) {
+            case android.R.id.home:
+                onBackPressed();
+                return true;
+            case R.id.action_share:
+                if (mMovie.getVideos().size() > 0){
+                    Intent shareIntent = createShareIntent(mMovie);
+                    startActivity(shareIntent);
+                }
+                else {
+                    Snackbar.make(mBinding.coordinatorView,
+                            R.string.error_no_video_available,
+                            Snackbar.LENGTH_SHORT).show();
+                }
+                return true;
         }
 
         return super.onOptionsItemSelected(item);

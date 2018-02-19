@@ -122,6 +122,8 @@ public class MoviesGridAdapter extends RecyclerView.Adapter<MoviesGridAdapter.Mo
             if (movie.getPosterFullPath() != null) {
                 Picasso.with(mBinding.getRoot().getContext())
                         .load(movie.getPosterFullPath())
+                        .error(R.drawable.ic_broken_image_white)
+                        .placeholder(R.drawable.ic_image_black_white)
                         .into(mBinding.moviePosterImageview);
             }
         }

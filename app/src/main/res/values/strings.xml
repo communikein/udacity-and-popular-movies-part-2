@@ -27,4 +27,7 @@
     <string name="label_reviews">Reviews</string>
     <string name="label_overview">Overview</string>
     <string name="error_video_not_from_youtube">Cannot play this video (not YouTube) :(</string>
+    <string name="action_share">Share video</string>
+    <string name="error_no_video_available">No video available to share :(</string>
+    <string name="share_video">Hey, check out this video of \"%1$s\"</string>
 </resources>
