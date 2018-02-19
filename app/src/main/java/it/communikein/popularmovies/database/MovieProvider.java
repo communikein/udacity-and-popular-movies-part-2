@@ -197,7 +197,7 @@ public class MovieProvider extends ContentProvider {
             db.endTransaction();
         }
 
-        if (inserted) {
+        if (inserted && !tableName.equals(MoviesContract.MovieEntry.TABLE_NAME)) {
             getContext().getContentResolver().notifyChange(uri, null);
 
             return uri;

@@ -283,6 +283,11 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onRefresh() {
+        int loader_id = getLoaderIdFromTab(selectedTab);
+        startLoader(loader_id);
+    }
+
+    private int getLoaderIdFromTab(int selectedTab) {
         int loader_id = LOADER_POPULAR_MOVIES_ID;
         switch (selectedTab) {
             case TAB_POPULAR_MOVIES:
@@ -296,7 +301,7 @@ public class MainActivity extends AppCompatActivity implements
                 break;
         }
 
-        startLoader(loader_id);
+        return loader_id;
     }
 
     private void handleMovies() {
