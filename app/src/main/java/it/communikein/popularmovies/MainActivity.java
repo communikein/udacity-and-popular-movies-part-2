@@ -108,12 +108,13 @@ public class MainActivity extends AppCompatActivity implements
         adapter.setList(moviesDataset.getResults());
         adapter.notifyDataSetChanged();
 
-
-        if (savedInstanceState.containsKey(KEY_FIRST_VISIBLE_ITEM_POS))
-            firstVisibleItemPosition = savedInstanceState.getInt(KEY_FIRST_VISIBLE_ITEM_POS);
-        else
-            firstVisibleItemPosition = 0;
-        mBinding.listRecyclerview.smoothScrollToPosition(firstVisibleItemPosition);
+        if (moviesDataset.getResults().size() > 0) {
+            if (savedInstanceState.containsKey(KEY_FIRST_VISIBLE_ITEM_POS))
+                firstVisibleItemPosition = savedInstanceState.getInt(KEY_FIRST_VISIBLE_ITEM_POS);
+            else
+                firstVisibleItemPosition = 0;
+            mBinding.listRecyclerview.smoothScrollToPosition(firstVisibleItemPosition);
+        }
     }
 
     @Override
